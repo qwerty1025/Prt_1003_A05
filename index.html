@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>咩味時刻 - Xprinter 58mm 高畫質點陣列印工具</title>
+  <title>咩味時刻 - XP-Q90EC 專用高畫質點陣列印</title>
   <style>
     :root {
       --primary: #2563eb;
-      --primary-hover: #1d4ed8;
       --success: #16a34a;
+      --purple: #7c3aed;
       --bg: #f8fafc;
       --card: #ffffff;
       --text: #1e293b;
@@ -16,23 +16,22 @@
     }
     * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
       background-color: var(--bg);
       color: var(--text);
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      justify-content: center;
     }
     .container {
-      max-width: 900px;
+      max-width: 920px;
       width: 100%;
       display: grid;
       grid-template-columns: 1fr 420px;
-      gap: 24px;
+      gap: 20px;
     }
-    @media (max-width: 800px) {
+    @media (max-width: 820px) {
       .container { grid-template-columns: 1fr; }
     }
     .card {
@@ -44,46 +43,45 @@
     }
     h2 {
       margin-top: 0;
-      font-size: 18px;
+      font-size: 17px;
       border-bottom: 1px solid var(--border);
       padding-bottom: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
-    .btn-group {
+    .btn-row {
       display: flex;
       gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     button {
-      padding: 10px 16px;
+      padding: 11px 14px;
       border-radius: 8px;
       border: none;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: 0.15s;
-      background: var(--primary);
       color: white;
+      background: var(--primary);
       flex: 1;
-      min-width: 130px;
+      transition: 0.15s;
     }
-    button:hover:not(:disabled) { background: var(--primary-hover); }
+    button:hover:not(:disabled) { filter: brightness(0.92); }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    button.secondary {
-      background: #64748b;
-    }
-    button.secondary:hover:not(:disabled) { background: #475569; }
-    button.print-btn {
+    button.usb-btn { background: #475569; }
+    button.print-main {
       background: var(--success);
-      font-size: 16px;
+      font-size: 15px;
       padding: 14px;
       width: 100%;
-      margin-top: 8px;
+      margin-bottom: 10px;
     }
-    button.print-btn:hover:not(:disabled) { background: #15803d; }
-
-    .status-badge {
+    button.print-alt {
+      background: var(--purple);
+      font-size: 14px;
+      padding: 12px;
+      width: 100%;
+    }
+    .badge {
       display: inline-block;
       padding: 4px 10px;
       border-radius: 999px;
@@ -91,33 +89,38 @@
       font-weight: 600;
       background: #fee2e2;
       color: #991b1b;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
-    .status-badge.connected {
+    .badge.ok {
       background: #dcfce7;
       color: #166534;
     }
-
-    .control-row {
+    .control-group {
       margin-bottom: 14px;
-      font-size: 14px;
+      font-size: 13px;
     }
-    .control-row label {
+    .control-group label {
       display: flex;
       justify-content: space-between;
       font-weight: 600;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
-    .control-row input[type="range"],
-    .control-row select {
-      width: 100%;
-      padding: 6px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-    }
-
-    .preview-box {
+    .control-group input[type="range"] { width: 100%; }
+    .progress-wrap {
       background: #e2e8f0;
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .progress-bar {
+      background: var(--primary);
+      height: 100%;
+      width: 0%;
+      transition: width 0.1s;
+    }
+    .preview-wrap {
+      background: #cbd5e1;
       padding: 16px;
       border-radius: 8px;
       display: flex;
@@ -126,12 +129,10 @@
     }
     canvas {
       background: white;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-      /* 384px 實際寬度，視覺維持原尺寸方便檢視銳利度 */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       width: 384px;
       height: auto;
     }
-
     #logBox {
       background: #0f172a;
       color: #e2e8f0;
@@ -139,7 +140,7 @@
       font-size: 12px;
       padding: 12px;
       border-radius: 8px;
-      height: 200px;
+      height: 190px;
       overflow-y: auto;
       line-height: 1.5;
     }
@@ -151,68 +152,64 @@
 <body>
 
   <div class="container">
-    <!-- 左欄：連線、參數與紀錄 -->
+    <!-- 左側控制區 -->
     <div class="card">
-      <h2>1. 印表機連線與參數設定</h2>
-      <div id="connStatus" class="status-badge">尚未連線印表機</div>
+      <h2>1. XP-Q90EC 連線與點陣控制</h2>
+      <div id="statusBadge" class="badge">尚未連線 XP-Q90EC</div>
 
-      <div class="btn-group">
-        <button id="btnBle" onclick="connectBluetooth()">🔹 藍牙連線 (BLE)</button>
-        <button id="btnUsb" class="secondary" onclick="connectUSB()">🔌 USB 連線 (WebUSB)</button>
+      <div class="btn-row">
+        <button onclick="connectBLE()">🔹 藍牙連線 (BLE 20B)</button>
+        <button class="usb-btn" onclick="connectUSB()">🔌 USB 連線 (極速)</button>
       </div>
 
-      <div class="control-row">
+      <div class="control-group">
         <label>
-          <span>黑白二值化閾值 (筆畫粗細微調)</span>
-          <span id="thresholdVal">180</span>
+          <span>字體粗細 / 黑白閾值 (Threshold)</span>
+          <span id="thVal">185</span>
         </label>
-        <input type="range" id="thresholdInput" min="120" max="230" value="180" oninput="updatePreview()">
-        <small style="color:#64748b;">調高 = 筆畫變粗黑；調低 = 筆畫變細銳利（精臣感建議 175~195）</small>
+        <input type="range" id="thInput" min="130" max="225" value="185" oninput="renderPreview()">
       </div>
 
-      <div class="control-row">
+      <div class="control-group">
         <label>
-          <span>藍牙單次封包大小 (Chunk Size)</span>
-          <span id="chunkVal">120 bytes</span>
+          <span>藍牙封包延遲 (防止亂碼緩衝時間)</span>
+          <span id="delayVal">12 ms</span>
         </label>
-        <input type="range" id="chunkInput" min="20" max="240" step="10" value="120"
-          oninput="document.getElementById('chunkVal').innerText = this.value + ' bytes'">
-        <small style="color:#64748b;">若印出亂碼或斷圖，請調小至 20~60 bytes</small>
+        <input type="range" id="delayInput" min="5" max="40" value="12"
+          oninput="document.getElementById('delayVal').innerText = this.value + ' ms'">
+        <small style="color:#64748b;">已強制鎖定每包 20 bytes。若藍牙仍偶爾掉字，可將延遲調至 20ms</small>
       </div>
 
-      <div class="control-row">
-        <label>
-          <input type="checkbox" id="heatDarker" checked>
-          啟用硬體加深指令 (ESC 7 提高熱敏頭加熱時間)
-        </label>
+      <div class="progress-wrap">
+        <div id="progressBar" class="progress-bar"></div>
       </div>
 
-      <button id="btnPrint" class="print-btn" onclick="printImageReceipt()">🖨️ 傳送點陣圖列印 (58mm / 384px)</button>
+      <!-- 兩種點陣協議按鈕 -->
+      <button id="btnPrintA" class="print-main" onclick="printReceipt('GS_V0')">
+        🖨️ 列印收據 — 模式 A (GS v 0 微切片點陣)
+      </button>
+      <button id="btnPrintB" class="print-alt" onclick="printReceipt('ESC_STAR')">
+        🛠️ 備用列印 — 模式 B (ESC * 33 逐行掃描點陣)
+      </button>
 
-      <h2 style="margin-top: 24px;">系統狀態紀錄</h2>
+      <h2 style="margin-top: 20px;">傳輸紀錄</h2>
       <div id="logBox"></div>
     </div>
 
-    <!-- 右欄：即時點陣預覽 -->
+    <!-- 右側預覽區 -->
     <div class="card">
-      <h2>2. 58mm 點陣化即時預覽 (384 dots)</h2>
-      <p style="font-size: 13px; color: #64748b; margin-top: 0;">
-        下方畫面已模擬轉換成<strong>純黑白 1-bit 點陣圖</strong>，印出來的邊緣與粗細會與此預覽完全一致：
-      </p>
-      <div class="preview-box">
-        <canvas id="previewCanvas" width="384" height="400"></canvas>
+      <h2>2. 58mm (384px) 1-Bit 點陣即時預覽</h2>
+      <div class="preview-wrap">
+        <canvas id="previewCanvas" width="384" height="420"></canvas>
       </div>
     </div>
   </div>
 
   <script>
-    // ==========================================
-    // 全域連線變數 (支援 Web Bluetooth 與 WebUSB)
-    // ==========================================
-    let connectionType = null; // 'ble' | 'usb'
-    let bleCharacteristic = null;
-    let usbDevice = null;
-    let usbEndpointOut = 1;
+    let connMode = null; // 'ble' | 'usb'
+    let bleChar = null;
+    let usbDev = null;
+    let usbEpOut = 1;
 
     function log(msg, type = 'info') {
       const box = document.getElementById('logBox');
@@ -224,155 +221,152 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    function setConnectedStatus(text, isConnected) {
-      const badge = document.getElementById('connStatus');
-      badge.textContent = text;
-      if (isConnected) badge.classList.add('connected');
-      else badge.classList.remove('connected');
+    function setProgress(percent) {
+      document.getElementById('progressBar').style.width = `${percent}%`;
     }
 
     // ==========================================
-    // 1. 藍牙連線 (Web Bluetooth API)
+    // 1. 藍牙連線 (自動尋找可寫入特徵值)
     // ==========================================
-    async function connectBluetooth() {
+    async function connectBLE() {
       try {
-        log('正在搜尋藍牙印表機...');
+        log('正在搜尋 XP-Q90EC 藍牙...');
         const device = await navigator.bluetooth.requestDevice({
           acceptAllDevices: true,
           optionalServices: [
-            '000018f0-0000-1000-8000-00805f9b34fb', // 常見熱敏機 UUID
-            'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Xprinter 常用 UUID
-            '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC 藍牙模組
-            '0000ff00-0000-1000-8000-00805f9b34fb'
+            '000018f0-0000-1000-8000-00805f9b34fb',
+            'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+            '0000ff00-0000-1000-8000-00805f9b34fb',
+            '0000ffe0-0000-1000-8000-00805f9b34fb'
           ]
         });
 
-        log(`已選擇裝置: ${device.name || '未命名裝置'}，正在連線...`);
         const server = await device.gatt.connect();
         const services = await server.getPrimaryServices();
 
-        let foundChar = null;
-        for (const service of services) {
-          const characteristics = await service.getCharacteristics();
-          for (const char of characteristics) {
-            if (char.properties.write || char.properties.writeWithoutResponse) {
-              foundChar = char;
+        let writeChar = null;
+        for (const s of services) {
+          const chars = await s.getCharacteristics();
+          for (const c of chars) {
+            // 優先選擇支援標準 write (有 ACK 確認) 的通道
+            if (c.properties.write) {
+              writeChar = c;
               break;
             }
+            if (c.properties.writeWithoutResponse && !writeChar) {
+              writeChar = c;
+            }
           }
-          if (foundChar) break;
+          if (writeChar && writeChar.properties.write) break;
         }
 
-        if (!foundChar) throw new Error('找不到可寫入的藍牙特徵值 (Characteristic)');
+        if (!writeChar) throw new Error('找不到藍牙寫入通道');
 
-        bleCharacteristic = foundChar;
-        connectionType = 'ble';
-        setConnectedStatus(`已透過藍牙連線：${device.name || 'Xprinter'}`, true);
-        log(`✅ 藍牙連線成功 (UUID: ${foundChar.uuid})`, 'success');
-
-        device.addEventListener('gattserverdisconnected', () => {
-          bleCharacteristic = null;
-          connectionType = null;
-          setConnectedStatus('藍牙已斷線', false);
-          log('⚠️ 藍牙裝置已斷線', 'error');
-        });
+        bleChar = writeChar;
+        connMode = 'ble';
+        const badge = document.getElementById('statusBadge');
+        badge.textContent = `已連線藍牙：${device.name || 'XP-Q90EC'}`;
+        badge.classList.add('ok');
+        log(`✅ 藍牙連線成功 (UUID: ${writeChar.uuid.slice(0, 8)}...)`, 'success');
       } catch (err) {
-        log(`藍牙連線失敗: ${err.message}`, 'error');
+        log(`藍牙連線錯誤: ${err.message}`, 'error');
       }
     }
 
     // ==========================================
-    // 2. USB 連線 (WebUSB API)
+    // 2. USB 連線 (WebUSB)
     // ==========================================
     async function connectUSB() {
       try {
-        log('正在請求 USB 裝置權限...');
         const device = await navigator.usb.requestDevice({ filters: [] });
         await device.open();
-        if (device.configuration === null) {
-          await device.selectConfiguration(1);
-        }
+        if (!device.configuration) await device.selectConfiguration(1);
         const iface = device.configuration.interfaces[0];
         await device.claimInterface(iface.interfaceNumber);
+        const ep = iface.alternate.endpoints.find(e => e.direction === 'out');
+        if (!ep) throw new Error('找不到輸出端點');
 
-        const outEndpoint = iface.alternate.endpoints.find(e => e.direction === 'out');
-        if (!outEndpoint) throw new Error('找不到 USB 輸出端點 (OUT Endpoint)');
-
-        usbDevice = device;
-        usbEndpointOut = outEndpoint.endpointNumber;
-        connectionType = 'usb';
-        setConnectedStatus(`已透過 USB 連線：${device.productName || 'Xprinter'}`, true);
-        log(`✅ USB 連線成功 (Endpoint: ${usbEndpointOut})`, 'success');
+        usbDev = device;
+        usbEpOut = ep.endpointNumber;
+        connMode = 'usb';
+        const badge = document.getElementById('statusBadge');
+        badge.textContent = `已連線 USB：${device.productName || 'XP-Q90EC'}`;
+        badge.classList.add('ok');
+        log('✅ USB 連線成功！支援極速點陣列印', 'success');
       } catch (err) {
-        log(`USB 連線失敗: ${err.message}`, 'error');
+        log(`USB 連線錯誤: ${err.message}`, 'error');
       }
     }
 
     // ==========================================
-    // 3. 統一底層傳送函式 (你原本的 sendRawBytes 升級版)
+    // 3. 安全傳送函式 (嚴格鎖定每包 20 bytes，絕不掉包)
     // ==========================================
-    async function sendRawBytes(buffer, chunkSize = 120) {
-      if (!connectionType) {
-        throw new Error('請先點擊上方按鈕連線藍牙或 USB 印表機！');
-      }
+    async function sendRawBytes(buffer, delayMs = 12) {
+      if (!connMode) throw new Error('請先連線藍牙或 USB 印表機！');
 
-      if (connectionType === 'usb' && usbDevice) {
-        await usbDevice.transferOut(usbEndpointOut, buffer);
+      if (connMode === 'usb' && usbDev) {
+        await usbDev.transferOut(usbEpOut, buffer);
+        setProgress(100);
         return;
       }
 
-      if (connectionType === 'ble' && bleCharacteristic) {
-        const canWriteWithoutResponse = bleCharacteristic.properties.writeWithoutResponse;
-        for (let i = 0; i < buffer.length; i += chunkSize) {
+      if (connMode === 'ble' && bleChar) {
+        const chunkSize = 20; // XP-Q90EC 藍牙黃金上限：20 bytes
+        const total = buffer.length;
+
+        for (let i = 0; i < total; i += chunkSize) {
           const chunk = buffer.slice(i, i + chunkSize);
-          if (canWriteWithoutResponse) {
-            await bleCharacteristic.writeValueWithoutResponse(chunk);
+          if (bleChar.properties.write) {
+            await bleChar.writeValue(chunk);
           } else {
-            await bleCharacteristic.writeValue(chunk);
+            await bleChar.writeValueWithoutResponse(chunk);
           }
-          // 微小延遲避免 Xprinter 藍牙模組 Buffer 塞車
-          await new Promise(r => setTimeout(r, 15));
+          if (delayMs > 0) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
+          if (i % 400 === 0) {
+            setProgress(Math.round((i / total) * 100));
+          }
         }
+        setProgress(100);
       }
     }
 
     // ==========================================
-    // 4. 繪製高解析度 Canvas 收據 (384px = 58mm 紙張)
+    // 4. 繪製「咩味時刻」收據 Canvas (384px 寬)
     // ==========================================
-    function drawSourceReceiptCanvas() {
-      const width = 384; // 48mm 有效列印寬度 * 8 dots/mm (203 DPI)
-      const tempCanvas = document.createElement('canvas');
-      const ctx = tempCanvas.getContext('2d');
+    function createReceiptCanvas() {
+      const width = 384; // 58mm 熱敏紙標準點數
+      const c = document.createElement('canvas');
+      c.width = width;
+      c.height = 600;
+      const ctx = c.getContext('2d');
 
-      tempCanvas.width = width;
-      tempCanvas.height = 600; // 預留高度，畫完自動裁切
-
-      // 白底
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      ctx.fillRect(0, 0, c.width, c.height);
 
       ctx.fillStyle = '#000000';
       ctx.textBaseline = 'top';
-      // 優先使用黑體，筆畫粗細一致，轉點陣最像精臣標籤機
-      const fontFamily = '"Microsoft JhengHei", "PingFang TC", "Noto Sans TC", "Heiti TC", sans-serif';
+      const font = '"Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif';
 
-      let y = 12;
+      let y = 10;
 
-      // 店家大標題
-      ctx.font = `bold 30px ${fontFamily}`;
+      // 店名標題
+      ctx.font = `bold 30px ${font}`;
       ctx.textAlign = 'center';
       ctx.fillText('咩味時刻', width / 2, y);
       y += 42;
 
-      // 訂單資訊
-      ctx.font = `bold 20px ${fontFamily}`;
+      // 訂單時間與資訊
+      ctx.font = `bold 19px ${font}`;
       ctx.textAlign = 'left';
-      const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
-      ctx.fillText(`時間：${nowStr}`, 0, y);
-      y += 32;
+      const timeStr = new Date().toLocaleString('zh-TW', { hour12: false });
+      ctx.fillText(`時間：${timeStr}`, 0, y);
+      y += 30;
 
-      // 欄位標題
-      ctx.font = `bold 20px ${fontFamily}`;
+      // 表頭
+      ctx.font = `bold 20px ${font}`;
       ctx.textAlign = 'left';
       ctx.fillText('品名', 0, y);
       ctx.textAlign = 'center';
@@ -381,17 +375,16 @@
       ctx.fillText('金額', width, y);
       y += 28;
 
-      // 上分隔線
       ctx.fillRect(0, y, width, 2);
       y += 10;
 
-      // 商品清單 (對應你原本的羊乳品項)
+      // 品項明細
       const items = [
         { name: '原味山羊乳(瓶)', qty: '2', price: '300' },
         { name: '草莓山羊乳(瓶)', qty: '1', price: '160' }
       ];
 
-      ctx.font = `bold 20px ${fontFamily}`;
+      ctx.font = `bold 20px ${font}`;
       for (const item of items) {
         ctx.textAlign = 'left';
         ctx.fillText(item.name, 0, y);
@@ -403,175 +396,185 @@
       }
 
       y += 4;
-      // 中分隔線
       ctx.fillRect(0, y, width, 2);
       y += 12;
 
       // 總計與狀態
-      ctx.font = `bold 24px ${fontFamily}`;
+      ctx.font = `bold 24px ${font}`;
       ctx.textAlign = 'left';
       ctx.fillText('總計：', 0, y);
       ctx.textAlign = 'right';
       ctx.fillText('NT$ 460', width, y);
       y += 34;
 
-      ctx.font = `bold 20px ${fontFamily}`;
+      ctx.font = `bold 20px ${font}`;
       ctx.textAlign = 'left';
       ctx.fillText('狀態：', 0, y);
       ctx.textAlign = 'right';
       ctx.fillText('已付清', width, y);
       y += 30;
 
-      // 雙實線 (取代原本的 ====)
+      // 雙實線分隔 (====)
       ctx.fillRect(0, y, width, 3);
       ctx.fillRect(0, y + 6, width, 1);
       y += 20;
 
-      // 頁尾置中文字
-      ctx.font = `bold 18px ${fontFamily}`;
+      // 頁尾
+      ctx.font = `bold 18px ${font}`;
       ctx.textAlign = 'center';
       ctx.fillText('* 請憑此單於約定時間取貨 *', width / 2, y);
       y += 28;
       ctx.fillText('感謝您對咩味時刻的支持', width / 2, y);
       y += 24;
 
-      // 裁切至實際高度
-      const finalCanvas = document.createElement('canvas');
-      finalCanvas.width = width;
-      finalCanvas.height = y;
-      finalCanvas.getContext('2d').drawImage(tempCanvas, 0, 0);
+      // 裁切至剛好高度 (並補齊為 24 的倍數，方便點陣切片)
+      const finalHeight = Math.ceil(y / 24) * 24;
+      const out = document.createElement('canvas');
+      out.width = width;
+      out.height = finalHeight;
+      const outCtx = out.getContext('2d');
+      outCtx.fillStyle = '#FFFFFF';
+      outCtx.fillRect(0, 0, width, finalHeight);
+      outCtx.drawImage(c, 0, 0);
 
-      return finalCanvas;
+      return out;
     }
 
     // ==========================================
-    // 5. 二值化預覽與轉換為 GS v 0 點陣指令
+    // 5. 即時渲染 1-bit 黑白預覽畫布
     // ==========================================
-    function updatePreview() {
-      const threshold = parseInt(document.getElementById('thresholdInput').value, 10);
-      document.getElementById('thresholdVal').innerText = threshold;
+    function renderPreview() {
+      const th = parseInt(document.getElementById('thInput').value, 10);
+      document.getElementById('thVal').innerText = th;
 
-      const srcCanvas = drawSourceReceiptCanvas();
-      const previewCanvas = document.getElementById('previewCanvas');
-      previewCanvas.width = srcCanvas.width;
-      previewCanvas.height = srcCanvas.height;
+      const src = createReceiptCanvas();
+      const preview = document.getElementById('previewCanvas');
+      preview.width = src.width;
+      preview.height = src.height;
 
-      const ctx = previewCanvas.getContext('2d');
-      ctx.drawImage(srcCanvas, 0, 0);
+      const ctx = preview.getContext('2d');
+      ctx.drawImage(src, 0, 0);
 
-      // 將預覽畫面直接進行 1-bit 黑白二值化，所見即所得
-      const imgData = ctx.getImageData(0, 0, previewCanvas.width, previewCanvas.height);
-      const data = imgData.data;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        const isBlack = data[i + 3] > 128 && lum < threshold;
-        const val = isBlack ? 0 : 255;
-        data[i] = val;
-        data[i + 1] = val;
-        data[i + 2] = val;
-        data[i + 3] = 255;
+      const img = ctx.getImageData(0, 0, preview.width, preview.height);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        const v = (d[i + 3] > 128 && lum < th) ? 0 : 255;
+        d[i] = d[i + 1] = d[i + 2] = v;
+        d[i + 3] = 255;
       }
-      ctx.putImageData(imgData, 0, 0);
+      ctx.putImageData(img, 0, 0);
     }
 
-    /**
-     * 將單一區塊 Canvas 轉成 ESC/POS GS v 0 格式
-     */
-    function canvasToEscPosRaster(canvas, threshold) {
-      const ctx = canvas.getContext('2d');
-      const width = canvas.width;
-      const height = canvas.height;
-      const data = ctx.getImageData(0, 0, width, height).data;
-
-      const bytesPerRow = Math.ceil(width / 8); // 384 / 8 = 48 bytes
-      const rasterData = new Uint8Array(bytesPerRow * height);
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const idx = (y * width + x) * 4;
-          const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-
-          if (data[idx + 3] > 128 && lum < threshold) {
-            const byteIndex = y * bytesPerRow + (x >> 3);
-            const bitIndex = 7 - (x & 7);
-            rasterData[byteIndex] |= (1 << bitIndex);
-          }
-        }
-      }
-
-      const xL = bytesPerRow & 0xFF;
-      const xH = (bytesPerRow >> 8) & 0xFF;
-      const yL = height & 0xFF;
-      const yH = (height >> 8) & 0xFF;
-
-      // GS v 0 m xL xH yL yH d1...dk
-      const header = [0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH];
-      return { header, rasterData };
+    function isBlack(imgData, width, x, y, th) {
+      const idx = (y * width + x) * 4;
+      const lum = 0.299 * imgData[idx] + 0.587 * imgData[idx + 1] + 0.114 * imgData[idx + 2];
+      return imgData[idx + 3] > 128 && lum < th;
     }
 
     // ==========================================
-    // 6. 執行分段點陣列印
+    // 6. 列印主程式 (支援模式 A: GS v 0 與 模式 B: ESC * 33)
     // ==========================================
-    async function printImageReceipt() {
-      const btn = document.getElementById('btnPrint');
+    async function printReceipt(mode) {
+      const btnA = document.getElementById('btnPrintA');
+      const btnB = document.getElementById('btnPrintB');
       try {
-        btn.disabled = true;
-        const threshold = parseInt(document.getElementById('thresholdInput').value, 10);
-        const chunkSize = parseInt(document.getElementById('chunkInput').value, 10);
-        const useHeatDarker = document.getElementById('heatDarker').checked;
+        btnA.disabled = true;
+        btnB.disabled = true;
+        setProgress(0);
 
-        const payload = [];
-        const addBytes = (bytes) => {
-          for (let i = 0; i < bytes.length; i++) payload.push(bytes[i]);
-        };
+        const th = parseInt(document.getElementById('thInput').value, 10);
+        const delayMs = parseInt(document.getElementById('delayInput').value, 10);
 
-        // 1. 初始化印表機 (ESC @)
-        addBytes([0x1B, 0x40]);
+        const canvas = createReceiptCanvas();
+        const width = canvas.width;   // 384
+        const height = canvas.height; // 24 的倍數
+        const imgData = canvas.getContext('2d').getImageData(0, 0, width, height).data;
 
-        // 2. 硬體加深濃度 (ESC 7 n1 n2 n3)
-        if (useHeatDarker) {
-          addBytes([0x1B, 0x37, 0x09, 0x6E, 0x02]);
+        log(`開始組裝 [${mode}] 點陣資料 (尺寸: ${width}x${height} px)...`);
+
+        // 先送初始化指令
+        await sendRawBytes(new Uint8Array([0x1B, 0x40]), delayMs);
+
+        if (mode === 'GS_V0') {
+          // 每次只切 24 行高 (1152 bytes)，分段傳送防止 XP-Q90EC 緩衝區爆掉變亂碼
+          const bandHeight = 24;
+          const bytesPerRow = width / 8; // 48 bytes
+
+          for (let y0 = 0; y0 < height; y0 += bandHeight) {
+            const slicePayload = [
+              0x1D, 0x76, 0x30, 0x00,
+              bytesPerRow & 0xFF, (bytesPerRow >> 8) & 0xFF,
+              bandHeight & 0xFF, (bandHeight >> 8) & 0xFF
+            ];
+
+            for (let y = y0; y < y0 + bandHeight; y++) {
+              for (let bx = 0; bx < bytesPerRow; bx++) {
+                let byte = 0;
+                for (let bit = 0; bit < 8; bit++) {
+                  if (isBlack(imgData, width, bx * 8 + bit, y, th)) {
+                    byte |= (1 << (7 - bit));
+                  }
+                }
+                slicePayload.push(byte);
+              }
+            }
+
+            await sendRawBytes(new Uint8Array(slicePayload), delayMs);
+            setProgress(Math.round(((y0 + bandHeight) / height) * 100));
+            // 每印完一條 24px 橫帶，讓熱敏頭與緩衝區消化 40ms
+            await new Promise(r => setTimeout(r, 40));
+          }
+        } else if (mode === 'ESC_STAR') {
+          // 備用模式 B：ESC * 33 (24-dot 雙倍密度逐行掃描)
+          // 先設定行距為 24 dots (ESC 3 24)，讓上下行圖片無縫接合
+          await sendRawBytes(new Uint8Array([0x1B, 0x33, 24]), delayMs);
+
+          for (let y0 = 0; y0 < height; y0 += 24) {
+            const linePayload = [
+              0x1B, 0x2A, 33,
+              width & 0xFF, (width >> 8) & 0xFF
+            ];
+
+            for (let x = 0; x < width; x++) {
+              for (let k = 0; k < 3; k++) {
+                let sliceByte = 0;
+                for (let b = 0; b < 8; b++) {
+                  if (isBlack(imgData, width, x, y0 + k * 8 + b, th)) {
+                    sliceByte |= (1 << (7 - b));
+                  }
+                }
+                linePayload.push(sliceByte);
+              }
+            }
+            linePayload.push(0x0A); // 換行印出這一條
+
+            await sendRawBytes(new Uint8Array(linePayload), delayMs);
+            setProgress(Math.round(((y0 + 24) / height) * 100));
+            await new Promise(r => setTimeout(r, 45));
+          }
+
+          // 恢復預設行距 (ESC 2)
+          await sendRawBytes(new Uint8Array([0x1B, 0x32]), delayMs);
         }
 
-        // 3. 取得完整畫布並每 80px 高度切片，防止 Xprinter 緩衝區溢位
-        const fullCanvas = drawSourceReceiptCanvas();
-        const sliceHeight = 80;
+        // 走紙並觸發 XP-Q90EC 自動切刀 (GS V 66 0)
+        const footerCmd = new Uint8Array([
+          0x0A, 0x0A, 0x0A, 0x0A,
+          0x1D, 0x56, 0x42, 0x00
+        ]);
+        await sendRawBytes(footerCmd, delayMs);
 
-        for (let offsetY = 0; offsetY < fullCanvas.height; offsetY += sliceHeight) {
-          const currentHeight = Math.min(sliceHeight, fullCanvas.height - offsetY);
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = fullCanvas.width;
-          sliceCanvas.height = currentHeight;
-
-          sliceCanvas.getContext('2d').drawImage(
-            fullCanvas,
-            0, offsetY, fullCanvas.width, currentHeight,
-            0, 0, fullCanvas.width, currentHeight
-          );
-
-          const { header, rasterData } = canvasToEscPosRaster(sliceCanvas, threshold);
-          addBytes(header);
-          addBytes(rasterData);
-        }
-
-        // 4. 走紙 4 行並切紙
-        addBytes([0x1B, 0x64, 0x04]);
-        addBytes([0x1D, 0x56, 0x42, 0x00]);
-
-        const finalBuffer = new Uint8Array(payload);
-        log(`開始傳送點陣影像 (${finalBuffer.length} bytes, 分包大小 ${chunkSize})...`);
-        await sendRawBytes(finalBuffer, chunkSize);
-        log(`✅ 點陣影像列印完成！`, 'success');
-      } catch (error) {
-        log(`列印錯誤: ${error.message}`, 'error');
+        log(`✅ [${mode}] 列印與切紙完成！`, 'success');
+      } catch (err) {
+        log(`列印失敗: ${err.message}`, 'error');
       } finally {
-        btn.disabled = false;
+        btnA.disabled = false;
+        btnB.disabled = false;
       }
     }
 
-    // 頁面載入時先渲染預覽圖
-    window.addEventListener('DOMContentLoaded', updatePreview);
+    window.addEventListener('DOMContentLoaded', renderPreview);
   </script>
 </body>
 </html>

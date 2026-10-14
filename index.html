@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>雙模藍牙列印 - 預購出單系統 (XP-Q90EC / 精臣 B21)</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- 載入 CP936 (GBK) 編碼庫供 XP-Q90EC 使用 -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/cpexcel.js"></script>
+
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      background-color: #0f172a;
+      color: #f1f5f9;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+  </style>
+</head>
+<body class="min-h-screen pb-12 selection:bg-indigo-500 selection:text-white">
+  
+  <div class="max-w-md mx-auto p-4 flex flex-col gap-5">
+    
+    <!-- 標頭卡片 -->
+    <header class="bg-slate-800/80 backdrop-blur border border-slate-700 rounded-2xl p-4 shadow-xl">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-tight text-white">預購出單 POS 系統</h1>
+            <p class="text-[11px] text-emerald-400 font-mono">支援: XP-Q90EC | 精臣 B21 (FW:10.17)</p>
+          </div>
+        </div>
+        <div id="connStatus" class="flex flex-col items-end">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-inner">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+            未連線
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 藍牙控制與機型選擇區 -->
+    <section class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-slate-300">藍牙裝置與協定控制</h2>
+        <select id="printerModel" onchange="onModelChange()" class="bg-slate-900 border border-slate-600 text-xs text-amber-400 font-mono rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500">
+          <option value="B21" selected>精臣 B21 (圖像封包協定)</option>
+          <option value="ESC">XP-Q90EC (ESC/POS 協定)</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <button id="btnConnect" onclick="connectPrinter()" class="w-full py-3 px-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all rounded-xl font-medium text-sm text-white shadow-md shadow-indigo-600/25 flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          搜尋並連線
+        </button>
+        <button id="btnDisconnect" onclick="disconnectPrinter()" disabled class="w-full py-3 px-2 bg-slate-700/80 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all rounded-xl font-medium text-sm text-slate-300 flex items-center justify-center gap-1">
+          中斷連線
+        </button>
+      </div>
+      <p id="btSupportNotice" class="text-[11px] text-slate-400 text-center font-mono mt-1">環境檢查中...</p>
+    </section>
+
+    <!-- 預購單列印操作區 -->
+    <section class="bg-gradient-to-br from-slate-800 to-amber-900/30 border border-amber-500/30 rounded-2xl p-5 shadow-lg flex flex-col items-center">
+      <div class="mb-4 w-full">
+        <div class="flex justify-between items-end border-b border-slate-700 pb-2 mb-3">
+          <h3 class="text-lg font-bold text-white">咩味時刻工作室</h3>
+          <span class="text-xs text-amber-400 font-mono">預購保留單</span>
+        </div>
+        
+        <div class="text-xs text-slate-300 font-mono space-y-1 mb-4 bg-slate-900 p-3 rounded-lg">
+          <p>單號：<span id="orderNo" class="text-white">PO-20261003-001</span></p>
+          <p>客戶：<span class="text-white">王小明 先生 (0912***456)</span></p>
+          <p>預計取貨：<span class="text-emerald-400">2026/10/05 14:00</span></p>
+        </div>
+
+        <!-- 精臣 B21 預覽畫布 (預設顯示，方便確認點陣圖排版) -->
+        <div id="canvasPreviewBox" class="bg-slate-900/90 p-3 rounded-xl border border-slate-700/80 flex flex-col items-center gap-2 mb-2">
+          <div class="w-full flex justify-between items-center text-[11px] text-slate-400 font-mono">
+            <span>B21 點陣圖預覽 (384x240px / 50x30mm)</span>
+            <button onclick="renderB21Canvas()" class="text-amber-400 hover:underline">重繪預覽</button>
+          </div>
+          <canvas id="b21Canvas" width="384" height="240" class="w-full max-w-[280px] bg-white rounded shadow-inner border border-slate-400"></canvas>
+        </div>
+      </div>
+      
+      <button onclick="handlePrint()" class="w-full py-4 px-4 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white rounded-xl font-bold text-base shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+        列印預購單據
+      </button>
+    </section>
+
+    <!-- 系統日誌 -->
+    <section class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg flex flex-col gap-2 h-48">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-700/50">
+        <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span> 執行日誌
+        </span>
+        <button onclick="clearLogs()" class="text-[11px] text-slate-400 hover:text-white transition-colors">清除</button>
+      </div>
+      <div id="logConsole" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1 pr-1"></div>
+    </section>
+
+  </div>
+
+  <script>
+    // --- 藍牙狀態與連線設定 ---
+    let bluetoothDevice = null;
+    let bluetoothServer = null;
+    let printerCharacteristic = null;
+    let notifyCharacteristic = null;
+    let heartbeatTimer = null;
+
+    // 支援 XP-Q90EC 與 精臣 B21 的服務 UUID
+    const SERVICE_UUIDS = [
+      'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // 精臣 B21 常用 BLE 服務與通用透傳
+      '0000ff00-0000-1000-8000-00805f9b34fb', // 精臣系列專用服務 (FF00)
+      '000018f0-0000-1000-8000-00805f9b34fb', // 標準 POS 服務
+      '49535343-fe7d-4ae5-8fa9-9fafd205e455'  // ISSC 藍牙透傳
+    ];
+    
+    const CHUNK_SIZE = 100; // 分塊傳輸大小
+
+    // --- 日誌工具 ---
+    function log(msg, type = 'info') {
+      const consoleEl = document.getElementById('logConsole');
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 2 });
+      
+      const div = document.createElement('div');
+      let colorClass = 'text-slate-300';
+      if (type === 'error') colorClass = 'text-rose-400 font-bold';
+      if (type === 'success') colorClass = 'text-emerald-400';
+      if (type === 'warn') colorClass = 'text-amber-300';
+      
+      div.className = `${colorClass} leading-tight break-all pb-1`;
+      div.innerHTML = `<span class="text-slate-500">[${time}]</span> ${msg}`;
+      
+      consoleEl.appendChild(div);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('logConsole').innerHTML = '';
+      log('日誌已清除');
+    }
+
+    function onModelChange() {
+      const model = document.getElementById('printerModel').value;
+      const previewBox = document.getElementById('canvasPreviewBox');
+      if (model === 'B21') {
+        previewBox.classList.remove('hidden');
+        renderB21Canvas();
+        log('已切換為：精臣 B21 圖像封包模式');
+      } else {
+        previewBox.classList.add('hidden');
+        log('已切換為：XP-Q90EC ESC/POS 模式');
+      }
+    }
+
+    // --- 初始化檢查 ---
+    window.onload = function() {
+      const notice = document.getElementById('btSupportNotice');
+      if (navigator.bluetooth) {
+        notice.textContent = '✔️ Web Bluetooth API 已就緒';
+        notice.className = 'text-[11px] text-emerald-400 text-center font-mono mt-1';
+        log('藍牙環境檢查通過');
+      } else {
+        notice.textContent = '❌ 瀏覽器不支援 Web Bluetooth';
+        notice.className = 'text-[11px] text-rose-400 text-center font-mono mt-1';
+        log('錯誤：請在 iOS 使用 Bluefy 或 Android Chrome 開啟此網頁', 'error');
+      }
+
+      renderB21Canvas();
+    };
+
+    // --- 藍牙連線與保活邏輯 ---
+    async function connectPrinter() {
+      if (!navigator.bluetooth) {
+        alert("請使用支援 Web Bluetooth 的瀏覽器。");
+        return;
+      }
+
+      try {
+        log('請求藍牙裝置配對 (支援 B21 / XP-Q90EC)...');
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [...SERVICE_UUIDS, 'generic_access']
+        });
+
+        const devName = bluetoothDevice.name || 'Unknown Device';
+        log(`已選擇裝置: ${devName}`, 'success');
+
+        // 若裝置名稱包含 B21，自動切換下拉選單
+        if (devName.toUpperCase().includes('B21')) {
+          document.getElementById('printerModel').value = 'B21';
+          onModelChange();
+        }
+
+        bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+        log('正在連接 GATT 伺服器...');
+        bluetoothServer = await bluetoothDevice.gatt.connect();
+        
+        log('正在尋找讀寫與通知特徵值...');
+        await setupCharacteristics(bluetoothServer);
+
+        if (printerCharacteristic) {
+          updateUI(true);
+          log('✅ 印表機連線準備就緒！', 'success');
+          startHeartbeat(); // 啟動連線保活機制
+        } else {
+          throw new Error('未找到支援寫入的藍牙特徵值');
+        }
+      } catch (err) {
+        log(`連線失敗: ${err.message}`, 'error');
+        updateUI(false);
+      }
+    }
+
+    async function setupCharacteristics(server) {
+      printerCharacteristic = null;
+      notifyCharacteristic = null;
+
+      let services = [];
+      for (let uuid of SERVICE_UUIDS) {
+        try {
+          const s = await server.getPrimaryService(uuid);
+          services.push(s);
+        } catch (e) {}
+      }
+      if (services.length === 0) {
+        try {
+          services = await server.getPrimaryServices();
+        } catch (e) {}
+      }
+
+      for (let service of services) {
+        try {
+          const chars = await service.getCharacteristics();
+          for (let char of chars) {
+            // 綁定通知通道 (精臣 B21 需要開啟 Notify 才能正常接收連續封包與維持連線)
+            if ((char.properties.notify || char.properties.indicate) && !notifyCharacteristic) {
+              notifyCharacteristic = char;
+              try {
+                await notifyCharacteristic.startNotifications();
+                notifyCharacteristic.addEventListener('characteristicvaluechanged', handlePrinterNotify);
+                log(`已啟用狀態監聽 (UUID: ${char.uuid.split('-')[0]})`);
+              } catch (e) {}
+            }
+            // 綁定寫入通道
+            if ((char.properties.write || char.properties.writeWithoutResponse) && !printerCharacteristic) {
+              printerCharacteristic = char;
+              log(`找到寫入通道 (UUID: ${char.uuid.split('-')[0]})`);
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    // 接收精臣 B21 回傳的狀態封包
+    function handlePrinterNotify(event) {
+      const val = new Uint8Array(event.target.value.buffer);
+      // 可在此解析機台回傳的電量或紙張狀態，預設靜默維持通道暢通
+    }
+
+    // 定時發送精臣心跳包 (0xDC)，防止 B21 閒置斷線
+    function startHeartbeat() {
+      stopHeartbeat();
+      heartbeatTimer = setInterval(async () => {
+        if (!bluetoothDevice || !bluetoothDevice.gatt.connected || !printerCharacteristic) return;
+        const model = document.getElementById('printerModel').value;
+        if (model === 'B21') {
+          try {
+            const hbPacket = buildNiimbotPacket(0xDC, [0x01]);
+            await writeSinglePacket(hbPacket);
+          } catch (e) {}
+        }
+      }, 10000); // 每 10 秒保活一次
+    }
+
+    function stopHeartbeat() {
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+    }
+
+    function onDisconnected() {
+      stopHeartbeat();
+      log('藍牙連線已中斷', 'warn');
+      updateUI(false);
+      bluetoothServer = null;
+      printerCharacteristic = null;
+      notifyCharacteristic = null;
+    }
+
+    function disconnectPrinter() {
+      stopHeartbeat();
+      if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+        log('正在手動中斷連線...');
+        bluetoothDevice.gatt.disconnect();
+      }
+    }
+
+    function updateUI(isConnected) {
+      const statusDiv = document.getElementById('connStatus');
+      const btnConnect = document.getElementById('btnConnect');
+      const btnDisconnect = document.getElementById('btnDisconnect');
+
+      if (isConnected) {
+        statusDiv.innerHTML = `
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> 已連線
+          </span>`;
+        btnConnect.classList.add('opacity-50', 'pointer-events-none');
+        btnDisconnect.disabled = false;
+      } else {
+        statusDiv.innerHTML = `
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-inner">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> 未連線
+          </span>`;
+        btnConnect.classList.remove('opacity-50', 'pointer-events-none');
+        btnDisconnect.disabled = true;
+      }
+    }
+
+    // --- 藍牙底層傳送函式 ---
+    async function writeSinglePacket(packetBytes) {
+      if (!printerCharacteristic) throw new Error("未連接印表機特徵值");
+      if (printerCharacteristic.properties.writeWithoutResponse) {
+        await printerCharacteristic.writeValueWithoutResponse(packetBytes);
+      } else {
+        await printerCharacteristic.writeValue(packetBytes);
+      }
+    }
+
+    async function sendRawBytes(payloadBytes, delayMs = 20) {
+      if (!printerCharacteristic) {
+        alert("請先連線至印表機");
+        return false;
+      }
+      const total = payloadBytes.length;
+      let offset = 0;
+
+      while (offset < total) {
+        const chunk = payloadBytes.slice(offset, offset + CHUNK_SIZE);
+        await writeSinglePacket(chunk);
+        offset += CHUNK_SIZE;
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+      return true;
+    }
+
+    // --- 列印分流器 ---
+    async function handlePrint() {
+      if (!printerCharacteristic) {
+        log('請先點擊「搜尋並連線」', 'warn');
+        return;
+      }
+      const model = document.getElementById('printerModel').value;
+      if (model === 'B21') {
+        await printNiimbotB21();
+      } else {
+        await printEscPosReceipt();
+      }
+    }
+
+    // =========================================================================
+    // 模組 A：精臣 B21 (FW 10.17 / HW 10.01) 專屬協定與點陣圖轉換引擎
+    // =========================================================================
+
+    // 1. 封裝精臣 B21 指令格式：0x55 0x55 + CMD + LEN + DATA + CHECKSUM(XOR) + 0xAA 0xAA
+    function buildNiimbotPacket(cmd, dataBytes) {
+      const len = dataBytes.length;
+      let checksum = cmd ^ len;
+      for (let i = 0; i < len; i++) {
+        checksum ^= dataBytes[i];
+      }
+      return new Uint8Array([0x55, 0x55, cmd, len, ...dataBytes, checksum & 0xFF, 0xAA, 0xAA]);
+    }
+
+    // 2. 將預購單繪製於 HTML5 Canvas (384x240 對應 50x30mm 貼紙)
+    function renderB21Canvas() {
+      const canvas = document.getElementById('b21Canvas');
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width;   // 384 dots (48 bytes)
+      const height = canvas.height; // 240 dots
+
+      // 白底清空
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+
+      // 黑色畫筆
+      ctx.fillStyle = '#000000';
+      ctx.strokeStyle = '#000000';
+      ctx.textBaseline = 'top';
+
+      // 外框
+      ctx.lineWidth = 2;
+      ctx.strokeRect(4, 4, width - 8, height - 8);
+
+      // 標題
+      ctx.font = 'bold 22px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('咩味時刻工作室 [預購單]', width / 2, 12);
+
+      // 分隔線 1
+      ctx.beginPath();
+      ctx.moveTo(12, 42);
+      ctx.lineTo(width - 12, 42);
+      ctx.stroke();
+
+      // 訂單與客戶資訊
+      ctx.font = 'bold 16px "Noto Sans TC", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('單號: PO-20261003-001', 14, 50);
+      ctx.fillText('客戶: 王小明 (0912***456)', 14, 74);
+      ctx.fillText('取貨: 2026/10/05 14:00', 14, 98);
+
+      // 分隔線 2
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(12, 124);
+      ctx.lineTo(width - 12, 124);
+      ctx.stroke();
+
+      // 商品明細
+      ctx.font = 'bold 16px "Noto Sans TC", monospace';
+      ctx.fillText('• 原味山羊乳(瓶) x2', 14, 132);
+      ctx.textAlign = 'right';
+      ctx.fillText('$300', width - 14, 132);
+
+      ctx.textAlign = 'left';
+      ctx.fillText('• 草莓山羊乳(瓶) x1', 14, 156);
+      ctx.textAlign = 'right';
+      ctx.fillText('$160', width - 14, 156);
+
+      // 分隔線 3
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(12, 184);
+      ctx.lineTo(width - 12, 184);
+      ctx.stroke();
+
+      // 總計與付款狀態
+      ctx.font = 'bold 20px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('總計: NT$ 460 (已付清)', 14, 196);
+
+      return canvas;
+    }
+
+    // 3. 計算單行點陣資料中「黑點 (1)」的數量 (精臣 0x85 指令標頭所需)
+    function countBits(byteArray) {
+      let count = 0;
+      for (let i = 0; i < byteArray.length; i++) {
+        let b = byteArray[i];
+        while (b > 0) {
+          count += b & 1;
+          b >>= 1;
+        }
+      }
+      return count;
+    }
+
+    // 4. 轉換 Canvas 為精臣 B21 指令序列並發送
+    async function printNiimbotB21() {
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      try {
+        log('準備繪製精臣 B21 標籤點陣圖...');
+        const canvas = renderB21Canvas();
+        const width = canvas.width;   // 384 (必須為 8 的倍數)
+        const height = canvas.height; // 240
+        const bytesPerRow = width / 8; // 48 bytes
+        const ctx = canvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, width, height).data;
+
+        log('傳送 B21 初始化指令 (濃度與紙張設定)...');
+        // 設定列印濃度 (0x21): 3 (適中，範圍 1~5)
+        await writeSinglePacket(buildNiimbotPacket(0x21, [0x03]));
+        await sleep(50);
+
+        // 設定標籤紙類型 (0x23): 1 (間隙紙 Gap Label)
+        await writeSinglePacket(buildNiimbotPacket(0x23, [0x01]));
+        await sleep(50);
+
+        // 啟動列印任務 (0x01): 針對 B21 FW 10.17 發送 7-byte 總頁數結構 (1頁)
+        await writeSinglePacket(buildNiimbotPacket(0x01, [0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]));
+        await sleep(120);
+
+        // 開始頁面 (0x03)
+        await writeSinglePacket(buildNiimbotPacket(0x03, [0x01]));
+        await sleep(60);
+
+        // 設定頁面畫布尺寸 (0x13): [高_H, 高_L, 寬_H, 寬_L, 份數_H, 份數_L]
+        await writeSinglePacket(buildNiimbotPacket(0x13, [
+          (height >> 8) & 0xFF, height & 0xFF,
+          (width >> 8) & 0xFF, width & 0xFF,
+          0x00, 0x01
+        ]));
+        await sleep(60);
+
+        log(`正在傳輸點陣圖資料 (${width}x${height} px)...`);
+
+        // 逐行轉換像素並傳送
+        for (let y = 0; y < height; y++) {
+          const rowBytes = new Uint8Array(bytesPerRow);
+          for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
+            const r = imgData[idx];
+            const g = imgData[idx + 1];
+            const b = imgData[idx + 2];
+            const a = imgData[idx + 3];
+            // 灰階亮度判斷：小於 128 視為黑點 (1)
+            const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+            if (a > 128 && luminance < 128) {
+              rowBytes[Math.floor(x / 8)] |= (1 << (7 - (x % 8)));
+            }
+          }
+
+          const blackCount = countBits(rowBytes);
+
+          if (blackCount === 0) {
+            // 空白行使用 0x84 指令快速跳過: [Y_H, Y_L, 重複次數]
+            const emptyPkt = buildNiimbotPacket(0x84, [(y >> 8) & 0xFF, y & 0xFF, 0x01]);
+            await writeSinglePacket(emptyPkt);
+          } else {
+            // 點陣行使用 0x85 指令: [Y_H, Y_L, 黑點數_H, 黑點數_L, 0x00, 重複次數, ...48 bytes點陣]
+            const header = [
+              (y >> 8) & 0xFF, y & 0xFF,
+              (blackCount >> 8) & 0xFF, blackCount & 0xFF,
+              0x00, 0x01
+            ];
+            const linePkt = buildNiimbotPacket(0x85, [...header, ...rowBytes]);
+            await writeSinglePacket(linePkt);
+          }
+
+          // 控制藍牙佇列節奏，避免 B21 緩衝區溢位
+          await sleep(8);
+        }
+
+        log('點陣圖傳送完畢，執行走紙與收尾...');
+        await sleep(100);
+
+        // 結束頁面 (0xE3)
+        await writeSinglePacket(buildNiimbotPacket(0xE3, [0x01]));
+        await sleep(300);
+
+        // 結束列印任務 (0xF3)
+        await writeSinglePacket(buildNiimbotPacket(0xF3, [0x01]));
+        log('✅ 精臣 B21 標籤列印完成！', 'success');
+
+      } catch (err) {
+        log(`❌ B21 列印錯誤: ${err.message}`, 'error');
+      }
+    }
+
+    // =========================================================================
+    // 模組 B：原有的 XP-Q90EC (ESC/POS + CP936) 出單邏輯
+    // =========================================================================
+    function getStringWidth(str) {
+      let len = 0;
+      for (let i = 0; i < str.length; i++) {
+        len += (str.charCodeAt(i) > 255) ? 2 : 1;
+      }
+      return len;
+    }
+
+    function padRight(str, totalWidth) {
+      const len = getStringWidth(str);
+      return len >= totalWidth ? str : str + ' '.repeat(totalWidth - len);
+    }
+
+    function padLeft(str, totalWidth) {
+      const len = getStringWidth(str);
+      return len >= totalWidth ? str : ' '.repeat(totalWidth - len) + str;
+    }
+
+    function encodeToCP936(text) {
+      if (typeof cptable === 'undefined') throw new Error("CP936 編碼庫未載入");
+      return new Uint8Array(cptable.utils.encode(936, text));
+    }
+
+    async function printEscPosReceipt() {
+      try {
+        log('建構 ESC/POS 預購單指令...');
+        const payload = [];
+        const addBytes = (arr) => { for(let i=0; i<arr.length; i++) payload.push(arr[i]); };
+
+        addBytes([0x1B, 0x40]); // 初始化印表機
+        addBytes([0x1C, 0x26]); // 啟用漢字模式
+        addBytes([0x1B, 0x61, 0x01]); // 置中對齊
+
+        const headerStr = 
+          "================================\n" +
+          "         咩味時刻工作室         \n" +
+          "       [ 預 購 保 留 單 ]       \n" +
+          "================================\n";
+        addBytes(encodeToCP936(headerStr));
+
+        addBytes([0x1B, 0x61, 0x00]); // 靠左對齊
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        
+        const infoStr = 
+          `單號：PO-20261003-001\n` +
+          `建檔：${timeStr}\n` +
+          `客戶：王小明 先生 (0912***456)\n` +
+          `取貨：2026/10/05 下午 14:00\n` +
+          "--------------------------------\n";
+        addBytes(encodeToCP936(infoStr));
+
+        let itemsStr = padRight("品名", 16) + padRight("數量", 6) + padLeft("金額", 10) + "\n";
+        itemsStr += padRight("原味山羊乳(瓶)", 16) + padRight("2", 6) + padLeft("300", 10) + "\n";
+        itemsStr += padRight("草莓山羊乳(瓶)", 16) + padRight("1", 6) + padLeft("160", 10) + "\n";
+        itemsStr += "--------------------------------\n";
+        itemsStr += padRight("總計：", 20) + padLeft("NT$ 460", 12) + "\n";
+        itemsStr += padRight("狀態：", 20) + padLeft("已付清", 12) + "\n";
+        itemsStr += "================================\n";
+        addBytes(encodeToCP936(itemsStr));
+
+        addBytes([0x1B, 0x61, 0x01]);
+        const footerStr = 
+          "* 請憑此單於約定時間取貨 *\n" +
+          "感謝您對咩味時刻的支持\n\n\n\n";
+        addBytes(encodeToCP936(footerStr));
+
+        addBytes([0x1D, 0x56, 0x42, 0x00]); // 切紙
+
+        const finalBuffer = new Uint8Array(payload);
+        log(`開始傳送 ESC/POS 資料 (${finalBuffer.length} bytes)...`);
+        await sendRawBytes(finalBuffer, 20);
+        log(`✅ ESC/POS 列印指令傳送完成`, 'success');
+      } catch (error) {
+        log(`列印錯誤: ${error.message}`, 'error');
+      }
+    }
+  </script>
+</body>
+</html>
